@@ -1,133 +1,175 @@
-import { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+type Lang = "hu" | "en";
+
+const DEMO_EMAIL = "demo@cv-demo.app";
+const DEMO_PASSWORD = "Demo1234!";
+
+const copy = {
+  hu: {
+    title1: "Önéletrajz / Álláshirdetés",
+    title2: "Kompatibilitás",
+    subtitle: "Demo / Teszt belépés",
+    email: "Email",
+    password: "Jelszó",
+    login: "Belépés",
+    register: "Regisztráció",
+    demo: "🚀 Belépés DEMO felhasználóval",
+    successLogin: "Sikeres belépés. Demo mód aktív.",
+    successRegister: "Regisztráció sikeres. Azonnal beléphetsz.",
+    disclaimer:
+      "Ez az alkalmazás demo / referencia projekt. Kérjük, ne adj meg valós személyes adatokat.",
+    language: "Nyelv",
+  },
+  en: {
+    title1: "CV / Job Description",
+    title2: "Compatibility",
+    subtitle: "Demo / Test login",
+    email: "Email",
+    password: "Password",
+    login: "Sign in",
+    register: "Sign up",
+    demo: "🚀 Sign in with DEMO user",
+    successLogin: "Login successful. Demo mode active.",
+    successRegister: "Registration successful. You can sign in now.",
+    disclaimer:
+      "This application is a demo / reference project. Please do not enter real personal data.",
+    language: "Language",
+  },
+};
+
 export default function Login() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const emailOk = useMemo(() => email.includes("@") && email.includes("."), [email]);
-  const pwOk = useMemo(() => password.length >= 6, [password]);
+  const [lang, setLang] = useState<Lang>("hu");
+  const t = copy[lang];
 
-  async function handleSubmit() {
-    setError(null);
+  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-    if (!emailOk) return setError("Kérlek adj meg egy érvényes e-mail címet.");
-    if (!pwOk) return setError("A jelszó legalább 6 karakter legyen.");
+  async function handleLogin() {
+    setLoading(true);
+    setMessage(null);
 
-    setBusy(true);
-    try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate("/dashboard");
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-        // Ha email confirmation ON, akkor a user e-mailben kap linket.
-        // Ha OFF, akkor azonnal tud belépni.
-        alert("Sikeres regisztráció! (Lehet, hogy e-mailben meg kell erősítened.)");
-        navigate("/dashboard");
-      }
-    } catch (e: any) {
-      setError(e.message ?? "Ismeretlen hiba történt.");
-    } finally {
-      setBusy(false);
+    if (error) {
+      setMessage(error.message);
+      setLoading(false);
+      return;
     }
+
+    setMessage(t.successLogin);
+    setLoading(false);
+
+    // kis delay UX miatt
+    setTimeout(() => navigate("/dashboard", { replace: true }), 200);
+  }
+
+  async function handleRegister() {
+    setLoading(true);
+    setMessage(null);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        email,
+        is_admin: false,
+      });
+    }
+
+    setMessage(t.successRegister);
+    setLoading(false);
+  }
+
+  async function handleDemoLogin() {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    await handleLogin();
   }
 
   return (
     <div style={styles.page}>
-      <div style={styles.bgGlow} />
-
       <div style={styles.card}>
-        <div style={styles.header}>
-          <div style={styles.logo} aria-hidden>
-            CV
-          </div>
+        <div style={styles.headerRow}>
           <div>
-            <h1 style={styles.title}>CV Tracker</h1>
-            <p style={styles.subtitle}>
-              AI-asszisztált (demo) CV & állás illeszkedés – regisztráció jóváhagyással.
-            </p>
+            <h1 style={styles.title}>
+              {t.title1}
+              <br />
+              {t.title2}
+            </h1>
+            <p style={styles.subtitle}>{t.subtitle}</p>
           </div>
-        </div>
 
-        <div style={styles.tabs}>
           <button
-            type="button"
-            onClick={() => setMode("signin")}
-            style={{
-              ...styles.tabBtn,
-              ...(mode === "signin" ? styles.tabActive : {})
-            }}
+            style={styles.langBtn}
+            onClick={() => setLang(lang === "hu" ? "en" : "hu")}
           >
-            Belépés
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("signup")}
-            style={{
-              ...styles.tabBtn,
-              ...(mode === "signup" ? styles.tabActive : {})
-            }}
-          >
-            Regisztráció
+            {t.language}: {lang.toUpperCase()}
           </button>
         </div>
 
-        <label style={styles.label}>
-          Email
-          <input
-            style={styles.input}
-            placeholder="pl. te@pelda.hu"
-            value={email}
-            onChange={(e) => setEmail(e.target.value.trim())}
-            autoComplete="email"
-            inputMode="email"
-          />
-        </label>
+        <input
+          style={styles.input}
+          type="email"
+          placeholder={t.email}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-        <label style={styles.label}>
-          Jelszó
-          <input
-            style={styles.input}
-            placeholder="legalább 6 karakter"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          />
-        </label>
-
-        {error && <div style={styles.errorBox}>{error}</div>}
+        <input
+          style={styles.input}
+          type="password"
+          placeholder={t.password}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
         <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={busy}
-          style={{
-            ...styles.primaryBtn,
-            ...(busy ? styles.btnDisabled : {})
-          }}
+          style={styles.primaryBtn}
+          onClick={handleLogin}
+          disabled={loading}
         >
-          {busy ? "Kérlek várj..." : mode === "signin" ? "Belépés" : "Regisztráció küldése"}
+          {t.login}
         </button>
 
-        <div style={styles.note}>
-          <b>Demo / portfólió alkalmazás:</b> kérlek ne tölts fel valós személyes adatokat.
-          Használj anonimizált teszt CV-t és állásleírást. A regisztráció jóváhagyás után aktív.
-        </div>
+        <button
+          style={styles.secondaryBtn}
+          onClick={handleRegister}
+          disabled={loading}
+        >
+          {t.register}
+        </button>
 
-        <div style={styles.footer}>
-          <span style={{ opacity: 0.8 }}>Supabase Auth • Replit deploy</span>
-          <span style={{ opacity: 0.8 }}>v0.1</span>
-        </div>
+        <button
+          style={styles.demoBtn}
+          onClick={handleDemoLogin}
+          disabled={loading}
+        >
+          {t.demo}
+        </button>
+
+        {message && <p style={styles.message}>{message}</p>}
+
+        <p style={styles.disclaimer}>{t.disclaimer}</p>
       </div>
     </div>
   );
@@ -136,133 +178,94 @@ export default function Login() {
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: "100vh",
-    display: "grid",
-    placeItems: "center",
-    padding: 18,
-    background:
-      "radial-gradient(1200px 600px at 20% 0%, rgba(0, 255, 170, 0.10), transparent 55%)," +
-      "radial-gradient(900px 500px at 90% 20%, rgba(140, 100, 255, 0.14), transparent 60%)," +
-      "linear-gradient(180deg, #0b0c10 0%, #0f1220 100%)",
-    color: "#e9ecf1",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Arial, sans-serif'
-  },
-  bgGlow: {
-    position: "fixed",
-    inset: 0,
-    pointerEvents: "none",
-    background:
-      "radial-gradient(600px 400px at 50% 35%, rgba(255,255,255,0.06), transparent 60%)"
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "linear-gradient(135deg,#0f2027,#203a43,#2c5364)",
+    padding: 16,
   },
   card: {
-    width: "min(460px, 96vw)",
-    borderRadius: 18,
-    padding: 18,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.40)",
-    backdropFilter: "blur(10px)"
+    width: 420,
+    padding: 28,
+    borderRadius: 16,
+    background: "rgba(255,255,255,0.12)",
+    backdropFilter: "blur(12px)",
+    color: "#fff",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
   },
-  header: {
+  headerRow: {
     display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
     gap: 12,
-    alignItems: "center",
-    marginBottom: 12
-  },
-  logo: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    display: "grid",
-    placeItems: "center",
-    fontWeight: 800,
-    letterSpacing: 0.5,
-    background: "linear-gradient(135deg, rgba(0,255,170,0.35), rgba(140,100,255,0.35))",
-    border: "1px solid rgba(255,255,255,0.14)"
   },
   title: {
     margin: 0,
-    fontSize: 20,
-    lineHeight: 1.2
+    lineHeight: 1.15,
   },
   subtitle: {
-    margin: "4px 0 0 0",
-    fontSize: 13,
-    opacity: 0.82
+    opacity: 0.85,
+    marginTop: 6,
   },
-  tabs: {
-    display: "flex",
-    gap: 8,
-    marginTop: 10,
-    marginBottom: 12
-  },
-  tabBtn: {
-    flex: 1,
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.18)",
-    color: "#e9ecf1",
+  langBtn: {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.4)",
+    background: "transparent",
+    color: "#fff",
     fontWeight: 700,
-    cursor: "pointer"
-  },
-  tabActive: {
-    background: "rgba(255,255,255,0.12)",
-    border: "1px solid rgba(255,255,255,0.18)"
-  },
-  label: {
-    display: "grid",
-    gap: 6,
-    fontSize: 13,
-    opacity: 0.9,
-    marginTop: 10
+    cursor: "pointer",
+    height: "fit-content",
   },
   input: {
-    padding: "12px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.20)",
-    color: "#e9ecf1",
-    outline: "none"
-  },
-  errorBox: {
-    marginTop: 12,
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255, 80, 80, 0.35)",
-    background: "rgba(255, 80, 80, 0.12)",
-    color: "#ffd6d6",
-    fontSize: 13
+    width: "100%",
+    padding: "12px 14px",
+    marginBottom: 12,
+    borderRadius: 10,
+    border: "none",
+    outline: "none",
   },
   primaryBtn: {
-    marginTop: 14,
     width: "100%",
-    padding: "12px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "linear-gradient(135deg, rgba(0,255,170,0.35), rgba(140,100,255,0.35))",
-    color: "#0b0c10",
-    fontWeight: 900,
-    cursor: "pointer"
+    padding: 12,
+    borderRadius: 10,
+    border: "none",
+    background: "#00c6ff",
+    color: "#001018",
+    fontWeight: 800,
+    marginBottom: 8,
+    cursor: "pointer",
   },
-  btnDisabled: {
-    opacity: 0.7,
-    cursor: "not-allowed"
+  secondaryBtn: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.4)",
+    background: "transparent",
+    color: "#fff",
+    marginBottom: 8,
+    cursor: "pointer",
   },
-  note: {
-    marginTop: 12,
+  demoBtn: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 10,
+    border: "none",
+    background: "#00ffcc",
+    color: "#003333",
+    fontWeight: 800,
+    marginBottom: 12,
+    cursor: "pointer",
+  },
+  message: {
+    marginTop: 10,
+    fontSize: 14,
+  },
+  disclaimer: {
+    marginTop: 16,
     fontSize: 12,
-    lineHeight: 1.45,
-    opacity: 0.78,
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(0,0,0,0.14)"
+    opacity: 0.65,
+    lineHeight: 1.4,
   },
-  footer: {
-    marginTop: 12,
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 12
-  }
 };
