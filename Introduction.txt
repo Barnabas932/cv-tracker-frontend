@@ -1,0 +1,98 @@
+AI-assisted CV / Job Description Compatibility – Demo Web Application
+====================================================================
+
+This repository contains a demo / reference web application that demonstrates
+how AI-assisted tools can support job applicants by comparing a CV
+(curriculum vitae) with a job description and estimating their compatibility.
+
+The project was designed as a non-production, educational and portfolio-level
+application, focusing on architecture, UX, and modern web development
+practices rather than real-world HR decision-making.
+
+--------------------------------------------------------------------
+Main goals
+--------------------------------------------------------------------
+
+• Demonstrate a modern full-stack web application architecture
+• Provide a clear, testable demo for CV–job description comparison
+• Showcase frontend design, authentication flow, and extensibility
+• Prepare the system for future AI-based evaluation using server-side logic
+
+--------------------------------------------------------------------
+Key features
+--------------------------------------------------------------------
+
+• Authentication handled via Supabase (email/password)
+• Demo user support for easy testing without approval flow
+• Hungarian / English language switch on the Login and Dashboard pages
+• Protected routes (login required for dashboard access)
+• Dashboard with:
+  – Downloadable demo CV and demo job description (PDF)
+  – Text input areas for CV and job description
+  – Compatibility score calculation (demo rule-based logic)
+  – Highlighted strengths, gaps, and detected keywords
+• Clean, responsive UI with a consistent visual design
+• Admin role support (extensible, not mandatory for demo usage)
+
+--------------------------------------------------------------------
+Technology stack
+--------------------------------------------------------------------
+
+Frontend:
+• React
+• TypeScript
+• Vite
+• React Router
+
+Backend / Services:
+• Supabase Auth
+• Supabase PostgreSQL
+• Supabase Storage (for demo PDF files)
+
+Other:
+• Simple rule-based scoring logic (keyword matching)
+• Prepared for future AI integration (e.g. embeddings, LLM scoring via Edge Functions)
+
+--------------------------------------------------------------------
+AI aspect (current state)
+--------------------------------------------------------------------
+
+The current implementation uses a lightweight, deterministic scoring mechanism
+based on keyword overlap between the CV and the job description.
+This approach was intentionally chosen to:
+
+• Keep the demo fully client-side
+• Avoid exposing API keys
+• Ensure predictable, transparent behavior
+
+The architecture is prepared for replacing this logic with:
+• Supabase Edge Functions
+• Server-side AI model calls (e.g. LLM-based scoring or embedding similarity)
+
+--------------------------------------------------------------------
+Data protection and privacy
+--------------------------------------------------------------------
+
+This application is a demo / reference project.
+
+• No real personal data should be entered
+• Demo PDFs and demo users are provided for testing
+• The system is not intended for real recruitment or decision-making
+• GDPR-relevant features (consent, deletion, auditing) are intentionally out of scope
+
+--------------------------------------------------------------------
+Intended use
+--------------------------------------------------------------------
+
+• Portfolio and reference project
+• Technical demonstration for interviews
+• Educational example of modern web application design
+• Base for further experimentation with AI-assisted HR tools
+
+--------------------------------------------------------------------
+Notes
+--------------------------------------------------------------------
+
+The project prioritizes clarity, maintainability, and extensibility.
+All features are intentionally simple and explicit to make the codebase
+easy to understand for reviewers and collaborators.
