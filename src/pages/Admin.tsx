@@ -1,66 +1,72 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-type PendingUser = {
+type Profile = {
   id: string;
-  email: string | null;
-  created_at: string;
-  is_approved: boolean;
+  email: string;
+  created_at?: string;
 };
 
-async function callFn(path: string, method: "GET" | "POST", body?: any) {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const token = sessionData.session?.access_token;
-  if (!token) throw new Error("Not logged in");
-
-  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error ?? "Request failed");
-  return json;
-}
-
 export default function Admin() {
-  const [pending, setPending] = useState<PendingUser[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  async function loadPending() {
-    setError(null);
-    setLoading(true);
-    try {
-      const json = await callFn("admin-list-pending", "GET");
-      setPending(json.pending ?? []);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const loadUsers = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, email, created_at")
+      .order("email");
 
-  async function approve(userId: string) {
-    setError(null);
-    setLoading(true);
-    try {
-      await callFn("admin-approve-user", "POST", { user_id: userId });
-      await loadPending();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+    if (!error && data) {
+      setUsers(data);
     }
-  }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!
+    loadUsers();
+  }, []);
+
+  return (
+    <div style={{ padding: 32 }}>
+      <h1>Admin / Demo panel</h1>
+
+      <p style={{ maxWidth: 600 }}>
+        Ez egy <b>demo / referencia projekt</b>.  
+        Az adminisztrátori jóváhagyás ebben a módban ki van kapcsolva.
+        Az alábbi lista kizárólag tájékoztató jellegű.
+      </p>
+
+      {loading && <p>Betöltés...</p>}
+
+      {!loading && users.length === 0 && (
+        <p>Nincs regisztrált felhasználó</p>
+      )}
+
+      {!loading && users.length > 0 && (
+        <table style={{ width: "100%", marginTop: 24 }}>
+          <thead>
+            <tr>
+              <th align="left">Email</th>
+              <th align="left">Regisztráció ideje</th>
+              <th align="left">Státusz</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id}>
+                <td>{u.email}</td>
+                <td>
+                  {u.created_at
+                    ? new Date(u.created_at).toLocaleString()
+                    : "-"}
+                </td>
+                <td>Demo mód (aktív)</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
